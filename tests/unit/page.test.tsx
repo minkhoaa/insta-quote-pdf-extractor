@@ -5,30 +5,30 @@ import { render, screen } from "@testing-library/react";
 import HomePage from "@/app/page";
 
 describe("HomePage Component", () => {
-  it("renders product title and description", () => {
+  it("renders product title and extraction heading", () => {
     render(<HomePage />);
     expect(
       screen.getByRole("heading", { name: "InstaQuote AI" })
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Evidence-First PDF Line-Item Extractor")
+      screen.getByText("Deterministic PDF Line-Item Extraction")
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Deterministic Line-Item Extraction" })
+      screen.getByRole("heading", { name: "Extract Trade Invoices & Quotes" })
     ).toBeInTheDocument();
   });
 
-  it("renders upload area placeholder without fake extraction", () => {
+  it("renders accessible file upload dropzone", () => {
     render(<HomePage />);
-    expect(screen.getByText("PDF Upload Placeholder")).toBeInTheDocument();
+    expect(
+      screen.getByText("Choose a PDF or drag & drop it here")
+    ).toBeInTheDocument();
     expect(screen.getByText(/PDF only/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ready for extraction pipeline integration/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Upload PDF Document/i)).toBeInTheDocument();
   });
 
-  it("displays core architectural pillars", () => {
+  it("displays zero-hallucination security badge", () => {
     render(<HomePage />);
-    expect(screen.getByText("Evidence First")).toBeInTheDocument();
-    expect(screen.getByText("Conservative Rules")).toBeInTheDocument();
-    expect(screen.getByText("Failure Isolation")).toBeInTheDocument();
+    expect(screen.getByText("Zero-Hallucination Core")).toBeInTheDocument();
   });
 });
