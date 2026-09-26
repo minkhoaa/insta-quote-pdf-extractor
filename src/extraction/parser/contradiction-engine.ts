@@ -140,18 +140,24 @@ export function detectTotalArithmeticContradiction(
         { page: pageNumber, sourceText: totalLine, method, confidence },
       ];
 
+      const fmt = (num: number) =>
+        num.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+
       return createContradictoryValuesRefusal({
         field: "total",
         page: pageNumber,
         evidence,
-        customMessage: `The printed invoice total ($${totalVal.toFixed(
-          2
-        )}) contradicts the arithmetic sum of printed Subtotal ($${subtotalVal.toFixed(
-          2
-        )}) and GST ($${gstVal.toFixed(
-          2
-        )}), which equals $${expectedSum.toFixed(
-          2
+        customMessage: `The printed invoice total ($${fmt(
+          totalVal
+        )}) contradicts the arithmetic sum of printed Subtotal ($${fmt(
+          subtotalVal
+        )}) and GST ($${fmt(
+          gstVal
+        )}), which equals $${fmt(
+          expectedSum
         )}. Silent arithmetic repair is prohibited; the figures are flagged as contradictory.`,
       });
     }
