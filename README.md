@@ -7,25 +7,19 @@ exact verbatim excerpt of the source text. Missing, contradictory, or
 otherwise unverifiable values are surfaced as structured refusals instead of
 being silently guessed or repaired.
 
+![Next.js](https://img.shields.io/badge/Next.js-15.x-000000?logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
+![pdfjs-dist](https://img.shields.io/badge/pdfjs--dist-4.x-FF6F00)
+![tesseract.js](https://img.shields.io/badge/tesseract.js-7.x-2C5E94)
+![Vitest](https://img.shields.io/badge/Vitest-3.x-6E9F18?logo=vitest&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-Node--Runtime-000000?logo=vercel&logoColor=white)
+
+No external OCR SaaS, no LLM, no API keys, no Docker, no system Tesseract, no Poppler.
+
 > **Central principle.** A value is only accepted when it can be traced to a
 > specific page and exact source text. Refusal is preferred over unsupported
 > inference.
-
----
-
-## Badges
-
-| Stack | Verified version |
-|---|---|
-| ![Next.js](https://img.shields.io/badge/Next.js-15.x-000000?logo=next.js&logoColor=white) | `next@15.2.1` (App Router, Node.js runtime) |
-| ![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black) | `react@19.0.0` |
-| ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white) | `typescript@5.8.2` (strict mode) |
-| ![PDF.js](https://img.shields.io/badge/pdfjs--dist-4.x-FF6F00) | `pdfjs-dist@4.10.38` (native text extraction) |
-| ![Tesseract.js](https://img.shields.io/badge/tesseract.js-7.x-2C5E94) | `tesseract.js@7.0.0` (local OCR, bundled `eng.traineddata`) |
-| ![Vitest](https://img.shields.io/badge/Vitest-3.x-6E9F18?logo=vitest&logoColor=white) | `vitest@3.0.8` |
-| ![Vercel](https://img.shields.io/badge/Vercel-Deploy-000000?logo=vercel&logoColor=white) | Node.js Serverless Function |
-
-No external OCR SaaS, no LLM, no API keys, no Docker, no system Tesseract, no Poppler.
 
 ---
 
@@ -139,9 +133,9 @@ Layers in the source tree:
 | `src/domain/` | Pure Zod-validated contracts: `LineItem`, `Evidence`, `Refusal`, `ExtractionResult`, API envelopes |
 | `src/components/` | UI components: dropzone, summary, line-items table, refusal panel, evidence viewer |
 
-There is no database, no message queue, no object storage, no AI service,
-and no background worker. Every dependency is local and runs inside a
-single Node.js serverless function.
+The document-processing backend has no database, no message queue, no
+object storage, no external AI service, and no background worker.
+Extraction runs synchronously within the Node.js `/api/extract` function.
 
 ---
 
@@ -208,14 +202,14 @@ The document has **no amount column**. The parser therefore returns:
   "description": "Coach screws, bulk carton",
   "quantity": "3",
   "weight": "20kg",
-  "unitPrice": "$74.00 /carton",
-  "amount": undefined
+  "unitPrice": "$74.00 /carton"
 }
 ```
 
-The value `$222.00` (i.e. `3 × $74.00`) is **never** returned, never
-displayed, never written into any JSON. The UI explicitly renders the
-amount cell as `Not in source`.
+The `amount` field is omitted from the response because it does not exist
+in the source text. The derived value `3 × $74.00` is **never** returned,
+never displayed, never written into any JSON. The UI explicitly renders
+the amount cell as `Not in source`.
 
 ---
 
@@ -332,7 +326,7 @@ Representative refusal JSON:
 
 ### Reason codes
 
-These are the exact enum values emitted by the pipeline:
+The domain model defines the following refusal reason codes:
 
 | Code | Meaning |
 |---|---|
@@ -362,7 +356,7 @@ Result:
 
 - Pages 1–3 and 5–8 are preserved with their extracted line items.
 - Page 4 becomes a `PAGE_EXTRACTION_FAILED` refusal that names the page
-  and the underlying error message.
+  and a human-readable failure reason.
 - The overall document `status` becomes `partial_success`.
 - The HTTP response remains `200 OK`.
 
@@ -370,6 +364,18 @@ This behavior is verified end-to-end by injecting an intentional OCR
 exception on page 4 of `IB-STMT47.pdf`. The test asserts that exactly the
 21 surviving line items remain, the refusal correctly attributes page 4,
 and the response status is `200`.
+
+> **Known issue.** The current `PAGE_EXTRACTION_FAILED` factory
+> (`createPageExtractionFailedRefusal`) interpolates the captured
+> exception text directly into the public `message`. The intentional
+> acceptance-audit test on page 4 of `IB-STMT47.pdf` relies on this
+> behavior (`expect(page4Refusal?.message).toContain("Simulated OCR
+> worker crash")`). This means raw exception text — and potentially
+> module-level error strings — can reach the user-facing refusal card.
+> The right long-term fix is for the pipeline to classify exceptions
+> into stable failure categories before formatting the refusal message,
+> rather than passing the exception text through. Tracked under
+> [Known limitations](#known-limitations).
 
 A row-level failure isolation test additionally verifies that a malformed
 row in the middle of a page does not destroy the surrounding rows.
@@ -493,8 +499,10 @@ page 4. The HTTP status remains `200 OK`.
 
 - **Vercel** Node.js Serverless Function (the route handler is explicitly
   pinned to `runtime = "nodejs"` and `dynamic = "force-dynamic"`)
-- Native bindings for `@napi-rs/canvas` are listed under
-  `serverExternalPackages` so they are not re-bundled
+- `@napi-rs/canvas` provides the native rendering binding used by the
+  OCR fallback. `@napi-rs/canvas`, `tesseract.js`, and `pdfjs-dist` are
+  listed under `serverExternalPackages` so they are not re-bundled by
+  the client compiler
 
 External services required: **none**.
 
@@ -526,15 +534,16 @@ slower per-page processing for scanned documents.
 ### 4. Arithmetic as validation, not source generation
 
 The contradiction engine uses arithmetic (subtotal + GST vs printed total)
-as a consistency check. When the arithmetic fails, the engine emits a
-refusal that **quotes the source numbers**, not the derived sum. The
-derived sum is never exposed as an extracted value.
+internally as a consistency check. When the arithmetic fails, the engine
+emits a refusal that **quotes only the source numbers**. The derived
+result is never promoted to a document value or public response.
 
 For example, a document that prints Subtotal `$1,270.00`, GST (15%)
 `$190.50`, and a printed Total of `$1,501.80` triggers the contradiction
-engine. The three source lines are preserved as evidence; the arithmetic
-sum (`$1,460.50`) and the difference (`$41.30`) are never written into
-the public response.
+engine when those three lines fail an internal consistency check. The
+three source lines are preserved as evidence in the refusal. The
+arithmetic result computed by the engine is used only as the trigger; it
+is never exposed as an extracted value.
 
 ### 5. Refusals as domain data
 
@@ -751,13 +760,14 @@ targets a behavior a consumer can observe, not an implementation detail.
 
 ### Refusal correctness
 
-- Missing amount is **never** calculated — derived sums (`$222.00`,
-  `$40.00`, `$142.50`, `$48.80`) are asserted absent from the serialized
-  response.
+- Missing amount is **never** calculated — for documents that omit the
+  amount column, the acceptance-audit asserts that any quantity-times-
+  price derived figures are absent from the serialized response.
 - Carton-count contradictions (9 vs 11) produce a refusal carrying both
   source excerpts and assign no value to `cartonCount`.
 - Printed-total inconsistencies produce a refusal carrying the three
-  source lines; derived sums never leak into the response.
+  source lines; the derived arithmetic result is used only as the
+  trigger and never leaks into the response.
 
 ### Evidence correctness
 
@@ -827,7 +837,8 @@ API key.
 
 ## Deployment
 
-The project is configured for one-click deployment on Vercel.
+The project is configured for deployment on Vercel as a single Next.js
+application.
 
 ```bash
 npm install -g vercel@latest     # or: npx vercel@latest
@@ -842,9 +853,10 @@ Configuration of note:
 - The route handler is pinned to the Node.js runtime
   (`export const runtime = "nodejs"`) and to dynamic rendering
   (`export const dynamic = "force-dynamic"`).
-- Native bindings for `@napi-rs/canvas`, `tesseract.js`, and `pdfjs-dist`
-  are listed in `next.config.ts` under `serverExternalPackages` so they
-  are not re-bundled by the client compiler.
+- `@napi-rs/canvas` (native rendering binding), `tesseract.js`, and
+  `pdfjs-dist` are listed in `next.config.ts` under
+  `serverExternalPackages` so they are not re-bundled by the client
+  compiler.
 - `assets/tessdata/**/*` and `pdfjs-dist`'s legacy worker are traced into
   the serverless bundle via `outputFileTracingIncludes`.
 - The OCR cache writes to `os.tmpdir()` (i.e. `/tmp` on Vercel), which is
@@ -856,7 +868,7 @@ No environment variables are required. There are no secrets to commit.
 The local production build (`npm run build` followed by `next start`) has
 been exercised end-to-end against all included sample PDFs. A hosted
 Vercel deployment has not been smoke-tested from the development
-environment; the deployment steps above are the expected flow.
+environment; the deployment steps above describe the configured flow.
 
 ---
 
@@ -875,12 +887,12 @@ GST (15%): $190.50
 Total (incl GST): $1,501.80
 ```
 
-The arithmetic sum is `$1,460.50`. Some extraction systems would silently
-rewrite the total to match arithmetic — preferring internal consistency
-over document fidelity. This project refuses to do that. It preserves all
-three verbatim source lines as evidence and emits a
-`CONTRADICTORY_VALUES` refusal without selecting either the printed total
-or the derived sum as a verified value.
+The three printed lines are inconsistent. Some extraction systems would
+silently rewrite the total to match arithmetic — preferring internal
+consistency over document fidelity. This project refuses to do that. It
+preserves all three verbatim source lines as evidence and emits a
+`CONTRADICTORY_VALUES` refusal without selecting either the printed
+total or any derived value as a verified field.
 
 The same principle applies to the document where the supplier contradicts
 itself about how many cartons were dispatched versus loaded. Neither
@@ -916,12 +928,13 @@ coverage and higher integrity.
   mitigates this by requiring verbatim matching, but a wrong token could
   pass if the surrounding text happens to contain the same wrong digit.
 - **Large OCR-heavy documents.** Each scanned page consumes roughly one
-  second of CPU on the single-threaded WebAssembly worker. A document
-  with many scanned pages may exceed the default Vercel function
-  duration budget on the Hobby plan.
+  second of CPU on the single-threaded WebAssembly worker. Large OCR-
+  heavy documents remain a latency and serverless execution-budget
+  concern because the extraction runs synchronously within a single
+  request.
 - **Synchronous serverless limits.** The whole extraction runs inside a
-  single HTTP request. Documents approaching the 4 MB upload ceiling or
-  the function timeout ceiling will be rejected before parsing.
+  single HTTP request. Documents approaching the 4 MB upload ceiling
+  may be rejected at the boundary before parsing even begins.
 
 ### What would I do with three more days?
 
@@ -970,6 +983,14 @@ coverage and higher integrity.
   Vercel request body limit. Larger documents must be split.
 - **No visual source highlighting.** Evidence is shown as text in a modal;
   there is no bounding-box overlay on the source page yet.
+- **Raw exception text can reach the user-facing refusal card.** The
+  current `createPageExtractionFailedRefusal` factory interpolates the
+  captured exception `message` directly into the public `Refusal.message`.
+  The acceptance-audit test on page 4 of `IB-STMT47.pdf` relies on this
+  behavior (`expect(refusal.message).toContain("Simulated OCR worker
+  crash")`). The fix is to classify pipeline exceptions into stable
+  failure categories before formatting the refusal message, rather than
+  passing the exception text through verbatim.
 
 ---
 
