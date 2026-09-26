@@ -69,8 +69,8 @@ meaningful failures across the backend, the API boundary, and the UI.
   (`FX-401`), units (`15mm`), or other amounts (`$74.00`) from satisfying
   numeric-field validation.
 - Missing amounts are never calculated. When the source document does not
-  print an amount column, the result is `amount: undefined`, surfaced in the
-  UI as `Not in source`.
+  print an amount column, the `amount` field is omitted from the response
+  and the UI renders the cell as `Not in source`.
 - Contradictions in the source document — conflicting carton counts, a
   printed total that does not sum with subtotal and GST — are surfaced as
   `CONTRADICTORY_VALUES` refusals with every conflicting source line
@@ -457,7 +457,7 @@ extraction pipeline and the real HTTP route handler.
 |---|---|---|---|
 | `IB-55871.pdf` | Clean native PDF with a complete amount column | Native extraction, 4 items, 0 refusals, `status: success` | 4 items, 0 refusals |
 | `IB-55902.pdf` | Image-only PDF requiring OCR | Local OCR fallback, 3 items, `method: "ocr"` on each | 3 items, 0 refusals |
-| `IB-56010.pdf` | No amount column | No amount is calculated; raw weight strings preserved verbatim | 4 items, 0 refusals, `amount: undefined` |
+| `IB-56010.pdf` | No amount column | No amount is calculated; raw weight strings preserved verbatim | 4 items, 0 refusals, `amount` field omitted |
 | `IB-56088.pdf` | Contradictory carton counts (9 vs 11) | Both lines preserved as evidence; `cartonCount` left unassigned | 3 items, 1 `CONTRADICTORY_VALUES` refusal |
 | `IB-56150.pdf` | Printed total inconsistent with subtotal + GST | Contradiction surfaced; printed total not silently replaced | 4 items, 1 `CONTRADICTORY_VALUES` refusal |
 | `IB-STMT47.pdf` | 8-page statement, mixed native and OCR | Pages 1–3 and 5–8 extracted natively; page 4 falls back to OCR; 24 items | 24 items, 0 refusals |
@@ -837,9 +837,27 @@ API key.
 
 ## Deployment
 
-The project is deployed on Vercel and publicly accessible.
+### Live deployment
 
-**Live production URL:** https://insta-quote-pdf-extractor.vercel.app
+https://insta-quote-pdf-extractor.vercel.app
+
+The production deployment is publicly accessible and has been smoke-tested
+against the representative native-text, OCR, contradiction, and
+mixed-page document paths.
+
+| Fixture | Path exercised | Result |
+|---|---|---|
+| `IB-55871.pdf` | Native text extraction | 4 items, 0 refusals, `success` |
+| `IB-55902.pdf` | Local OCR fallback | 3 items, method `ocr`, 0 refusals |
+| `IB-56088.pdf` | Contradiction propagation | 3 items, 1 `CONTRADICTORY_VALUES` refusal, `partial_success` |
+| `IB-STMT47.pdf` | Mixed native + OCR, 8 pages | 24 items, page 4 OCR, pages 1–3 + 5–8 native |
+
+The hosted deployment serves `POST /api/extract` to anonymous clients
+without authentication. The local production build
+(`npm run build` + `next start`) has also been exercised end-to-end
+against all included sample PDFs.
+
+### Deploying your own copy
 
 The same application can be re-deployed to Vercel as a single Next.js
 project with the Vercel CLI:
@@ -869,11 +887,6 @@ Configuration of note:
 - Upload size is capped at 4 MB to fit within Vercel's request body limit.
 
 No environment variables are required. There are no secrets to commit.
-
-Both the local production build (`npm run build` + `next start`) and the
-hosted Vercel deployment have been smoke-tested end-to-end against all
-included sample PDFs. The hosted deployment serves `POST /api/extract`
-to anonymous clients without authentication.
 
 ---
 
