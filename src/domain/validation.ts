@@ -40,48 +40,38 @@ export function isNumericValueGroundedInSource(
     return false;
   }
 
-  // 1. Direct exact verbatim match
-  if (trimmedSource.includes(trimmedCandidate)) {
-    return true;
-  }
-
-  // 2. Whitespace normalization (collapse multi-spaces, newlines, tabs)
+  // 1. Whitespace normalization (collapse multi-spaces, newlines, tabs)
   const normSource = trimmedSource.replace(/\s+/g, " ");
   const normCandidate = trimmedCandidate.replace(/\s+/g, " ");
 
-  if (normSource.includes(normCandidate)) {
-    return true;
-  }
-
-  // 3. Currency symbol spacing normalization (e.g. "$ 74.00" <=> "$74.00")
+  // 2. Currency symbol spacing normalization (e.g. "$ 74.00" <=> "$74.00")
   const currencyCleanSource = normSource.replace(/([$€£¥])\s+/g, "$1");
   const currencyCleanCandidate = normCandidate.replace(/([$€£¥])\s+/g, "$1");
 
-  if (currencyCleanSource.includes(currencyCleanCandidate)) {
-    return true;
-  }
-
-  // 4. Token-bounded regex check to prevent matching inside alphanumeric tokens
-  // e.g. Candidate "3" matches "3 carton", but "4" does NOT match inside "FX-401"
+  // 3. Token-bounded regex check to prevent matching inside alphanumeric tokens or codes
+  // e.g. Candidate "3" matches "3 carton", but "4" does NOT match inside "FX-401" or "$74.00"
+  // and "401" does NOT match inside SKU "FX-401"
   const escapedCandidate = currencyCleanCandidate.replace(
     /[.*+?^${}()|[\]\\]/g,
     "\\$&"
   );
   const tokenRegex = new RegExp(
-    `(?<![0-9A-Za-z])${escapedCandidate}(?![0-9A-Za-z])`
+    `(?<![0-9A-Za-z-,.%])${escapedCandidate}(?![0-9A-Za-z-,.%])`
   );
 
   if (tokenRegex.test(currencyCleanSource)) {
     return true;
   }
 
-  // 5. If candidate includes currency symbol, also check if raw numeric core matches bounded in source
-  const numericOnlyMatch = currencyCleanCandidate.match(/^[^\d]*([\d,]+(?:\.\d+)?)[^\d]*$/);
+  // 4. If candidate includes currency symbol, also check if raw numeric core matches bounded in source
+  const numericOnlyMatch = currencyCleanCandidate.match(
+    /^[^\d]*([\d,]+(?:\.\d+)?)[^\d]*$/
+  );
   if (numericOnlyMatch && numericOnlyMatch[1]) {
     const rawNumber = numericOnlyMatch[1];
     const escapedNumber = rawNumber.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const numberRegex = new RegExp(
-      `(?<![0-9A-Za-z])${escapedNumber}(?![0-9A-Za-z])`
+      `(?<![0-9A-Za-z-,.%])${escapedNumber}(?![0-9A-Za-z-,.%])`
     );
     if (numberRegex.test(currencyCleanSource)) {
       return true;

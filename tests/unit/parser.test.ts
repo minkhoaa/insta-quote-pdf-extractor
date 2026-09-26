@@ -144,7 +144,11 @@ describe("Deterministic Line-Item Parser & Contradiction Engine", () => {
     expect(totalRefusal.evidence?.[0].sourceText).toContain("$1,270.00");
     expect(totalRefusal.evidence?.[1].sourceText).toContain("$190.50");
     expect(totalRefusal.evidence?.[2].sourceText).toContain("$1,501.80");
-    expect(totalRefusal.message).toContain("contradicts the arithmetic sum");
+    expect(totalRefusal.message).toBe(
+      "The printed total conflicts with the subtotal and GST shown in the document. No total was selected as verified."
+    );
+    expect(totalRefusal.message).not.toContain("1,460.50");
+    expect(totalRefusal.message).not.toContain("41.30");
   });
 
   // Test 7: Multi-page statement and OCR isolation (IB-STMT47)

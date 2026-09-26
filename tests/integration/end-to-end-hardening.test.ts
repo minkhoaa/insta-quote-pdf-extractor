@@ -86,8 +86,13 @@ describe("End-to-End Hardening & Safety Audit (All 6 Assessment PDFs)", () => {
     expect(body5.data.refusals).toHaveLength(1);
     expect(body5.data.refusals[0].reasonCode).toBe(RefusalCode.CONTRADICTORY_VALUES);
     expect(body5.data.refusals[0].field).toBe("total");
-    expect(body5.data.refusals[0].message).toContain("1,501.80");
-    expect(body5.data.refusals[0].message).toContain("1,460.50");
+    expect(body5.data.refusals[0].message).toBe(
+      "The printed total conflicts with the subtotal and GST shown in the document. No total was selected as verified."
+    );
+    expect(body5.data.refusals[0].message).not.toContain("1,460.50");
+    expect(body5.data.refusals[0].message).not.toContain("41.30");
+    expect(JSON.stringify(body5.data)).not.toContain("1,460.50");
+    expect(JSON.stringify(body5.data)).not.toContain("41.30");
 
     // 6. IB-STMT47: 8 pages (3 items/page = 24 items), page 4 via OCR
     const req6 = createRequestWithPdf("IB-STMT47.pdf");
