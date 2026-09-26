@@ -31,23 +31,21 @@ No external OCR SaaS, no LLM, no API keys, no Docker, no system Tesseract, no Po
 
 ## Overview
 
-This is a take-home submission for the **InstaQuote AI Full Stack Engineer**
-assessment. The project is delivered in two parts, both served from the same
-Next.js application:
+The application ships as a single Next.js project:
 
-- **Part A** — a deterministic extraction pipeline that turns a PDF into a
-  structured JSON `ExtractionResult` containing verified line items and
-  structured refusals.
-- **Part B** — a small web application that lets a user upload a PDF, view
-  the parsed line items, inspect source evidence for every accepted value,
-  and read plain-language explanations for every refusal.
+- A deterministic extraction pipeline that turns a PDF into a structured
+  `ExtractionResult` containing verified line items and structured
+  refusals.
+- A small web application that lets a user upload a PDF, view the parsed
+  line items, inspect source evidence for every accepted value, and read
+  plain-language explanations for every refusal.
 
-The core engineering challenge is **not** to maximize extraction coverage.
-It is to read imperfect documents, to know when not to trust a value, to
-retain source evidence for everything that is accepted, and to preserve
+The central engineering concern is not maximizing extraction coverage. It
+is reading imperfect documents, knowing when not to trust a value,
+retaining source evidence for everything that is accepted, and preserving
 meaningful failures across the backend, the API boundary, and the UI.
 
-> **A confidently wrong number is worse than an explicit refusal.**
+> A confidently wrong number is worse than an explicit refusal.
 
 ---
 
@@ -147,7 +145,7 @@ single Node.js serverless function.
 
 ---
 
-## Core extraction workflow
+## Extraction workflow
 
 ```
 PDF upload
@@ -301,12 +299,12 @@ Summary: 9 cartons dispatched from Ironbark warehouse this run.
 Warehouse notes: 11 cartons picked and loaded onto the truck.
 ```
 
-Expected behavior:
+The parser:
 
-- The parser does not select `9`.
-- The parser does not select `11`.
-- All valid line items are still returned.
-- A contradiction refusal is emitted carrying both source statements as
+- Does not select `9`.
+- Does not select `11`.
+- Still returns all valid line items.
+- Emits a contradiction refusal carrying both source statements as
   evidence.
 
 Representative refusal JSON:
@@ -348,11 +346,6 @@ These are the exact enum values emitted by the pipeline:
 ---
 
 ## Failure isolation
-
-This section directly addresses the assessment criterion:
-
-> Whether problems in part of a file are contained, or take down the rest
-> of it.
 
 ```
 Page 1 --> success
@@ -450,9 +443,9 @@ itself was invalid.
 
 ## Sample document coverage
 
-The six supplied fixtures were used to drive the implementation. Each row
-below was verified end-to-end through the real extraction pipeline and the
-real HTTP route handler.
+The included fixtures drive the implementation and were used to build the
+end-to-end test suite. Each row below was verified through the real
+extraction pipeline and the real HTTP route handler.
 
 | Document | Scenario | Expected behavior | Result |
 |---|---|---|---|
@@ -537,11 +530,11 @@ as a consistency check. When the arithmetic fails, the engine emits a
 refusal that **quotes the source numbers**, not the derived sum. The
 derived sum is never exposed as an extracted value.
 
-Example for `IB-56150`:
-
-- Source quotes preserved: `$1,270.00`, `$190.50`, `$1,501.80`.
-- Derived sum (`$1,460.50`) and difference (`$41.30`): never written into
-  the public response.
+For example, a document that prints Subtotal `$1,270.00`, GST (15%)
+`$190.50`, and a printed Total of `$1,501.80` triggers the contradiction
+engine. The three source lines are preserved as evidence; the arithmetic
+sum (`$1,460.50`) and the difference (`$41.30`) are never written into
+the public response.
 
 ### 5. Refusals as domain data
 
@@ -744,7 +737,7 @@ tests/
   unit/                              Vitest unit tests
   integration/                       API + end-to-end hardening
   acceptance/                        Comprehensive acceptance audit
-  fixtures/pdfs/                     The 6 assessment PDFs
+  fixtures/pdfs/                     Included sample PDFs
   mocks/                             server-only stub for tests
   setup.ts                           Jest-DOM matchers
 ```
@@ -753,18 +746,18 @@ tests/
 
 ## Testing strategy
 
-The test suite is organized around the assessment rubric, not around code
-coverage. Every test targets an observable invariant.
+The test suite is organized around observable invariants. Every test
+targets a behavior a consumer can observe, not an implementation detail.
 
 ### Refusal correctness
 
-- Missing amount is **never** calculated — `IB-56010` derived sums
-  (`$222.00`, `$40.00`, `$142.50`, `$48.80`) are asserted absent from the
-  serialized response.
-- `IB-56088` contradiction (9 vs 11 cartons) produces a refusal carrying
-  both source excerpts and assigns no value to `cartonCount`.
-- `IB-56150` printed-total inconsistency produces a refusal carrying the
-  three source lines; derived sums never leak into the response.
+- Missing amount is **never** calculated — derived sums (`$222.00`,
+  `$40.00`, `$142.50`, `$48.80`) are asserted absent from the serialized
+  response.
+- Carton-count contradictions (9 vs 11) produce a refusal carrying both
+  source excerpts and assign no value to `cartonCount`.
+- Printed-total inconsistencies produce a refusal carrying the three
+  source lines; derived sums never leak into the response.
 
 ### Evidence correctness
 
@@ -795,9 +788,9 @@ coverage. Every test targets an observable invariant.
 ### Coverage summary (verified by `npm run test`)
 
 - 16 test files, 108 tests passing.
-- Includes the full 6-PDF acceptance audit, forced page-4 OCR failure
-  isolation, malformed row isolation, the API request-error matrix, and
-  the frontend refusal-preservation tests.
+- Includes the full sample-PDF acceptance audit, forced page-4 OCR
+  failure isolation, malformed row isolation, the API request-error
+  matrix, and the frontend refusal-preservation tests.
 
 ---
 
@@ -860,54 +853,21 @@ Configuration of note:
 
 No environment variables are required. There are no secrets to commit.
 
----
-
-## Production verification
-
-The local production build (`npm run build` followed by `next start`) was
-exercised end-to-end against the running production server. All six
-assessment PDFs were submitted to `POST /api/extract` on the production
-build and produced the expected outcomes:
-
-| Fixture | Local production result |
-|---|---|
-| `IB-55871` | 4 items, 0 refusals, `success` |
-| `IB-55902` | 3 items, 0 refusals, OCR invoked on page 1 |
-| `IB-56010` | 4 items, `amount: undefined`, raw weights preserved |
-| `IB-56088` | 3 items, 1 `CONTRADICTORY_VALUES` refusal, `partial_success` |
-| `IB-56150` | 4 items, 1 `CONTRADICTORY_VALUES` refusal, derived sums absent |
-| `IB-STMT47` | 24 items, OCR only on page 4 |
-
-A **real hosted Vercel deployment was not smoke-tested** from the
-development environment used to build this submission. The Vercel
-project metadata is present at `.vercel/project.json`, but no public
-production URL has been empirically exercised. The deployment steps
-above are the expected flow; the actual hosted smoke test is left to
-the reviewer or to the first CI run after merge.
+The local production build (`npm run build` followed by `next start`) has
+been exercised end-to-end against all included sample PDFs. A hosted
+Vercel deployment has not been smoke-tested from the development
+environment; the deployment steps above are the expected flow.
 
 ---
 
-## What we're evaluating
-
-| Evaluation criterion | Implementation response |
-|---|---|
-| **Refuse correctly; never invent values** | The Evidence Gate (`src/domain/validation.ts`) requires every accepted numeric field to be traceable to a verbatim source excerpt bounded by token boundaries. Missing amounts return `undefined`, never a calculated value. Conflicting figures are returned as refusals with both source lines preserved. |
-| **Contain partial failures** | The extraction pipeline processes each page independently. A thrown exception on one page becomes a `PAGE_EXTRACTION_FAILED` refusal; other pages still return their items. The HTTP status remains `200`. The Tesseract worker is shared across OCR pages within one request and is always terminated in `finally`. |
-| **Trace every number to page / source** | Every `LineItem` carries an `evidence` map keyed by numeric field (`quantity`, `weight`, `unitPrice`, `amount`) where each value is an `Evidence` record with `page` (positive 1-based integer) and `sourceText` (verbatim, non-empty). The frontend `EvidenceViewer` modal renders this verbatim source on demand. |
-| **Refusals reach Part B in plain language** | Refusals are returned inside the `ExtractionResult` envelope with HTTP 200. The `RefusalPanel` component renders a human-readable title, the full `message`, the page tag, and any conflicting source quotes side-by-side. They are never replaced with a generic error. |
-| **Readable code + tests** | Code is organised into clearly named modules (`pdf/`, `ocr/`, `parser/`, `domain/`). Each module has a focused, single responsibility. Tests target observable invariants rather than implementation details. 16 test files / 108 tests pass under `npm run test`. |
-| **Honest README limitations** | This README explicitly enumerates known limitations (see below) and honestly states that a hosted Vercel smoke test was not performed from the development environment. |
-
----
-
-## Assessment questions
+## Engineering reflections
 
 ### What was the hardest decision, and why did you choose that way?
 
 The hardest decision was the boundary between "plausible" and "safe" when
 extracting numeric values from trade documents.
 
-The clearest example is `IB-56150`, which prints:
+The clearest example is the invoice that prints:
 
 ```
 Subtotal: $1,270.00
@@ -922,10 +882,10 @@ three verbatim source lines as evidence and emits a
 `CONTRADICTORY_VALUES` refusal without selecting either the printed total
 or the derived sum as a verified value.
 
-The same principle applies to `IB-56088`, where the document contradicts
-itself about how many cartons were dispatched versus loaded. Neither value
-is accepted; both are preserved as evidence so the user can reconcile
-them with the supplier.
+The same principle applies to the document where the supplier contradicts
+itself about how many cartons were dispatched versus loaded. Neither
+value is accepted; both are preserved as evidence so the user can
+reconcile them with the supplier.
 
 The alternative — picking the more "consistent" value — would feel more
 helpful, but it would conceal the document's actual error. For trade
@@ -1008,10 +968,6 @@ coverage and higher integrity.
   refusals.
 - **4 MB upload cap.** The upload size is capped at 4 MB to fit the
   Vercel request body limit. Larger documents must be split.
-- **No hosted smoke test.** The local production build has been exercised
-  end-to-end. A real Vercel-hosted smoke test was not performed from the
-  development environment and should be run by the reviewer or in CI
-  before relying on the deployed URL.
 - **No visual source highlighting.** Evidence is shown as text in a modal;
   there is no bounding-box overlay on the source page yet.
 
@@ -1019,43 +975,14 @@ coverage and higher integrity.
 
 ## Design philosophy
 
-- **Traceability > coverage.** Every accepted value can be shown to come
-  from a specific page and a specific source excerpt.
-- **Explicit refusal > unsupported inference.** A refusal is the correct
-  answer for a value that cannot be verified. It is preferred over a
-  guess.
-- **Partial result > whole-document failure.** A document with one bad
-  page and seven good pages returns seven pages of items plus one refusal,
-  not a blanket failure.
-- **Specific explanation > generic error.** Refusals and HTTP errors carry
-  stable codes and human-readable messages, surfaced unchanged through
-  the UI.
-
----
-
-## Submission
-
-Submission requirements for this take-home:
-
-1. Push this repository to a host visible to the reviewer (GitHub).
-2. Send the **repository link** — not a zip archive — to:
-
-   - **Luke**
-   - `nguyenvanlocdhqt@gmail.com`
-
-3. Make sure the repository's commit history is visible (do not squash
-   the working history).
-
-### Submission checklist
-
-- [ ] Repository pushed to a public/visible remote
-- [ ] Commit history is preserved and visible
-- [ ] No zip-only submission
-- [ ] `README.md` complete (this file)
-- [ ] No secrets committed
-- [ ] `npm ci` passes
-- [ ] `npm run lint` passes
-- [ ] `npm run typecheck` passes
-- [ ] `npm run test` passes
-- [ ] `npm run build` passes
-- [ ] Production deployment smoke-tested (only if a hosted URL exists)
+- **Traceability over coverage.** Every accepted value can be shown to
+  come from a specific page and a specific source excerpt.
+- **Explicit refusal over unsupported inference.** A refusal is the
+  correct answer for a value that cannot be verified. It is preferred
+  over a guess.
+- **Partial result over whole-document failure.** A document with one
+  bad page and seven good pages returns seven pages of items plus one
+  refusal, not a blanket failure.
+- **Specific explanation over generic error.** Refusals and HTTP errors
+  carry stable codes and human-readable messages, surfaced unchanged
+  through the UI.
