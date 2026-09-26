@@ -7,6 +7,7 @@ exact verbatim excerpt of the source text. Missing, contradictory, or
 otherwise unverifiable values are surfaced as structured refusals instead of
 being silently guessed or repaired.
 
+[![Live](https://img.shields.io/badge/Live-insta--quote--pdf--extractor.vercel.app-10b981?logo=vercel&logoColor=white)](https://insta-quote-pdf-extractor.vercel.app)
 ![Next.js](https://img.shields.io/badge/Next.js-15.x-000000?logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
@@ -14,6 +15,8 @@ being silently guessed or repaired.
 ![tesseract.js](https://img.shields.io/badge/tesseract.js-7.x-2C5E94)
 ![Vitest](https://img.shields.io/badge/Vitest-3.x-6E9F18?logo=vitest&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-Node--Runtime-000000?logo=vercel&logoColor=white)
+
+**Live deployment:** [https://insta-quote-pdf-extractor.vercel.app](https://insta-quote-pdf-extractor.vercel.app) — production URL, smoke-tested against representative native-text, OCR, contradiction, and mixed-page paths. See [Live deployment](#live-deployment) for the verification table.
 
 No external OCR SaaS, no LLM, no API keys, no Docker, no system Tesseract, no Poppler.
 
