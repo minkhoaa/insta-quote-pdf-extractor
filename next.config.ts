@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
     "pdf-parse",
     "pdfjs-dist",
   ],
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./assets/tessdata/**/*"],
+  },
 };
 
 export default nextConfig;
