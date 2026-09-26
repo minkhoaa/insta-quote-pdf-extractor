@@ -59,12 +59,11 @@ end via the local production smoke test and continue to behave correctly.
 
 ### Deployment Protection
 
-The Vercel deployment has Deployment Protection enabled. All unauthenticated
-HTTP requests to the production URL return `302` redirects to Vercel SSO.
-Production smoke tests were performed using `vercel curl`, which
-automatically generates and uses a one-shot bypass token. This is the
-intended behavior of the project's security configuration and was not
-modified.
+SSO Deployment Protection was initially enabled (Vercel default). It was
+disabled via `vercel project protection disable insta-quote-pdf-extractor --sso`
+after the user reported the public URL was inaccessible from an
+incognito browser. The public production URL now serves the homepage and
+`/api/extract` to any client without authentication.
 
 ## Repository Cleanup
 
@@ -111,10 +110,10 @@ modified.
 3. **Upload size capped at 4 MB** to respect Vercel's request body limit.
 4. **No background-task queue.** Large OCR-heavy documents can approach the
    serverless function duration budget on Vercel's Hobby plan.
-5. **No real-Vercel smoke test for an unauthenticated browser session.**
-   Deployment Protection is on by default and was not disabled; all
-   smoke tests were performed via `vercel curl` with an auto-generated
-   bypass token.
+5. ~~No real-Vercel smoke test for an unauthenticated browser session.~~
+   SSO Deployment Protection was disabled after the user requested
+   public access; all six PDFs now serve directly from
+   `https://insta-quote-pdf-extractor.vercel.app` to anonymous clients.
 
 ## GitHub Repository
 
