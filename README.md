@@ -16,8 +16,6 @@ being silently guessed or repaired.
 ![Vitest](https://img.shields.io/badge/Vitest-3.x-6E9F18?logo=vitest&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-Node--Runtime-000000?logo=vercel&logoColor=white)
 
-**Live deployment:** [https://insta-quote-pdf-extractor.vercel.app](https://insta-quote-pdf-extractor.vercel.app) — production URL, smoke-tested against representative native-text, OCR, contradiction, and mixed-page paths. See [Live deployment](#live-deployment) for the verification table.
-
 No external OCR SaaS, no LLM, no API keys, no Docker, no system Tesseract, no Poppler.
 
 > **Central principle.** A value is only accepted when it can be traced to a
