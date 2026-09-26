@@ -15,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.9",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
     "next": "^15.2.1",
@@ -23,6 +24,7 @@
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.0.2",
+    "tesseract.js": "^7.0.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

@@ -39,3 +39,6 @@ next-env.d.ts
 *.swo
 .DS_Store
 WATCHDOG.yml
+
+# OCR Caches
+/*.traineddata
