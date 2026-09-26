@@ -837,8 +837,12 @@ API key.
 
 ## Deployment
 
-The project is configured for deployment on Vercel as a single Next.js
-application.
+The project is deployed on Vercel and publicly accessible.
+
+**Live production URL:** https://insta-quote-pdf-extractor.vercel.app
+
+The same application can be re-deployed to Vercel as a single Next.js
+project with the Vercel CLI:
 
 ```bash
 npm install -g vercel@latest     # or: npx vercel@latest
@@ -857,18 +861,19 @@ Configuration of note:
   `pdfjs-dist` are listed in `next.config.ts` under
   `serverExternalPackages` so they are not re-bundled by the client
   compiler.
-- `assets/tessdata/**/*` and `pdfjs-dist`'s legacy worker are traced into
-  the serverless bundle via `outputFileTracingIncludes`.
+- `assets/tessdata/**/*`, `pdfjs-dist`'s legacy worker, and the six
+  `tesseract.js-core` WASM cores are traced into the serverless bundle
+  via `outputFileTracingIncludes`.
 - The OCR cache writes to `os.tmpdir()` (i.e. `/tmp` on Vercel), which is
   the only writable location on the serverless filesystem.
 - Upload size is capped at 4 MB to fit within Vercel's request body limit.
 
 No environment variables are required. There are no secrets to commit.
 
-The local production build (`npm run build` followed by `next start`) has
-been exercised end-to-end against all included sample PDFs. A hosted
-Vercel deployment has not been smoke-tested from the development
-environment; the deployment steps above describe the configured flow.
+Both the local production build (`npm run build` + `next start`) and the
+hosted Vercel deployment have been smoke-tested end-to-end against all
+included sample PDFs. The hosted deployment serves `POST /api/extract`
+to anonymous clients without authentication.
 
 ---
 
