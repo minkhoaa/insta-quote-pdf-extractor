@@ -32,9 +32,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# IDE
+# IDE & Tooling
 .idea
 .vscode
 *.swp
 *.swo
 .DS_Store
+WATCHDOG.yml
