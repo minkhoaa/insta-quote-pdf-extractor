@@ -95,6 +95,7 @@ export function evaluatePageUsability(
 
 /**
  * Assembles raw PDF text items into line-ordered text preserving layout fidelity.
+ * Groups items sharing the same vertical baseline into a single line.
  * Does not alter, normalize, or calculate any values.
  */
 function assemblePageText(items: PdfTextItem[]): string {
@@ -111,7 +112,6 @@ function assemblePageText(items: PdfTextItem[]): string {
     return "";
   }
 
-  // Group items into lines based on their vertical Y coordinate
   const lines: string[] = [];
   let currentLineParts: string[] = [];
   let currentY: number | null = null;
@@ -123,9 +123,8 @@ function assemblePageText(items: PdfTextItem[]): string {
     const x = item.transform[4];
     const width = item.width || 0;
 
-    const isNewLine =
-      currentY !== null &&
-      (Math.abs(y - currentY) > 3 || (currentLineParts.length > 0 && item.hasEOL));
+    // A new line occurs when vertical baseline changes beyond tolerance
+    const isNewLine = currentY !== null && Math.abs(y - currentY) > 3;
 
     if (isNewLine) {
       if (currentLineParts.length > 0) {
@@ -157,6 +156,7 @@ function assemblePageText(items: PdfTextItem[]): string {
       lastWidth = width;
     }
 
+    // hasEOL indicates the end of the current visual line
     if (item.hasEOL && currentLineParts.length > 0) {
       lines.push(currentLineParts.join("").trimEnd());
       currentLineParts = [];
